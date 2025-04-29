@@ -171,6 +171,118 @@
             width: 100% !important;
             height: 100% !important;
         }
+        
+        /* New styles for the user metrics table */
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+        
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        
+        .users-table th,
+        .users-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--gray-light);
+        }
+        
+        .users-table th {
+            background-color: var(--primary-light);
+            color: var(--primary);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        
+        .users-table tr:hover {
+            background-color: var(--gray-light);
+        }
+        
+        .engagement-pill {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: white;
+        }
+        
+        .pill-high {
+            background-color: #42b72a;
+        }
+        
+        .pill-medium {
+            background-color: #f7b928;
+        }
+        
+        .pill-low {
+            background-color: #fa3e3e;
+        }
+        
+        .search-box {
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--gray-light);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background-color: var(--white);
+            color: var(--dark);
+        }
+        
+        .sort-select {
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--gray-light);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background-color: var(--white);
+            color: var(--dark);
+        }
+        
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+            background-color: var(--gray-light);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--gray);
+            font-size: 14px;
+            overflow: hidden;
+        }
+
+        .default-avatar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            background-color: var(--gray-light);
+            color: var(--gray);
+            font-size: 16px;
+        }
+        
+        .user-name {
+            display: flex;
+            align-items: center;
+        }
 
         @media (max-width: 768px) {
             .grid {
@@ -187,6 +299,15 @@
             
             .chart-container {
                 height: 250px;
+            }
+            
+            .search-box {
+                flex-direction: column;
+            }
+            
+            .users-table th,
+            .users-table td {
+                padding: 0.5rem;
             }
         }
     </style>
@@ -236,6 +357,49 @@
                 </div>
                 <div class="chart-container">
                     <canvas id="postsOverTimeChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- New Card for User Post Metrics -->
+            <div class="card full-width">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-list"></i>
+                        User Post Metrics
+                    </h2>
+                </div>
+                <div class="search-box">
+                    <input type="text" id="userSearch" class="search-input" placeholder="Search by username...">
+                    <select id="sortSelect" class="sort-select">
+                        <option value="posts-desc">Posts (High to Low)</option>
+                        <option value="posts-asc">Posts (Low to High)</option>
+                        <option value="likes-desc">Likes (High to Low)</option>
+                        <option value="likes-asc">Likes (Low to High)</option>
+                        <option value="comments-desc">Comments (High to Low)</option>
+                        <option value="comments-asc">Comments (Low to High)</option>
+                        <option value="shares-desc">Shares (High to Low)</option>
+                        <option value="shares-asc">Shares (Low to High)</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <table class="users-table" id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Posts</th>
+                                <th>Likes</th>
+                                <th>Comments</th>
+                                <th>Shares</th>
+                                <th>Engagement Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody">
+                            <!-- User data will be populated here -->
+                            <tr>
+                                <td colspan="6" style="text-align: center;">Loading user data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -408,6 +572,109 @@
                 document.getElementById('postsOverTimeChart').parentNode.innerHTML = 
                     '<div style="text-align: center; padding: 2rem;">Error loading chart data</div>';
             });
+            
+        // User Post Metrics Table - Updated to handle the correct JSON structure
+fetch('UserPostMetrics.php')
+    .then(res => {
+        if (!res.ok) {
+            throw new Error(`HTTP error! Status: ${res.status}`);
+        }
+        return res.json();
+    })
+    .then(response => {
+        // Extract data from the response structure
+        const data = response.data || [];
+        
+        // Check if we received valid data
+        if (!Array.isArray(data)) {
+            // Handle error response which might be in {error: "message"} format
+            if (response.error) {
+                throw new Error(response.error);
+            }
+            // If it's not an array and doesn't have an error property, it's an unexpected format
+            throw new Error('Unexpected data format received from server');
+        }
+        
+        if (data.length === 0) {
+            document.getElementById('userTableBody').innerHTML = 
+                '<tr><td colspan="6" style="text-align: center;">No user data available</td></tr>';
+            return;
+        }
+        
+        renderUserTable(data);
+        
+        // Set up event listeners for search and sort
+        document.getElementById('userSearch').addEventListener('input', function() {
+            filterAndSortUsers(data);
+        });
+        
+        document.getElementById('sortSelect').addEventListener('change', function() {
+            filterAndSortUsers(data);
+        });
+    })
+    .catch(error => {
+        console.error('Error fetching user post metrics:', error);
+        document.getElementById('userTableBody').innerHTML = 
+            `<tr><td colspan="6" style="text-align: center;">Error loading user data: ${error.message}</td></tr>`;
+    });
+    
+function renderUserTable(data) {
+    const tableBody = document.getElementById('userTableBody');
+    tableBody.innerHTML = '';
+    
+    data.forEach(user => {
+        // Calculate engagement rate in the frontend (likes + comments + shares) / posts
+        const engagementRate = user.posts > 0 ? 
+            ((user.likes + user.comments + user.shares) / user.posts).toFixed(2) : '0.00';
+        
+        // Determine engagement level for styling
+        let engagementClass = 'pill-low';
+        if (engagementRate > 5) {
+            engagementClass = 'pill-high';
+        } else if (engagementRate > 2) {
+            engagementClass = 'pill-medium';
+        }
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="user-name">
+                <div class="user-avatar">
+                    <div class="default-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+                ${user.username}
+            </td>
+            <td>${user.posts}</td>
+            <td>${user.likes}</td>
+            <td>${user.comments}</td>
+            <td>${user.shares}</td>
+            <td><span class="engagement-pill ${engagementClass}">${engagementRate}</span></td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+// Add the missing filterAndSortUsers function
+function filterAndSortUsers(originalData) {
+    const searchValue = document.getElementById('userSearch').value.toLowerCase();
+    const sortValue = document.getElementById('sortSelect').value;
+    
+    // Filter the data based on search term
+    let filteredData = originalData.filter(user => 
+        user.username.toLowerCase().includes(searchValue)
+    );
+    
+    // Sort the data based on selected sort option
+    const [field, direction] = sortValue.split('-');
+    filteredData.sort((a, b) => {
+        const multiplier = direction === 'asc' ? 1 : -1;
+        return multiplier * (a[field] - b[field]);
+    });
+    
+    // Render the filtered and sorted data
+    renderUserTable(filteredData);
+}
     </script>
 </body>
 </html>
